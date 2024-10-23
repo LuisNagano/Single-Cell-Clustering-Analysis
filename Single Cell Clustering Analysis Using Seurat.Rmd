@@ -1,0 +1,229 @@
+---
+
+title: "Single Cell Clustering Analysis Using Seurat"
+author: "Luis Fernando Nagano"
+date: "`r format(Sys.Date(), '2024, April 15')`"
+output: html_document
+
+---
+
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+```
+
+# Introduction
+
+In this project, we will perform a single-cell RNA sequencing (scRNA-seq) data analysis using the **Seurat** package. We will use a dataset of 3,000 Peripheral Blood Mononuclear Cells (PBMC) provided freely by 10X Genomics. The objective is to demonstrate a complete analysis pipeline, from data loading to cell type identification, which can be used as a gold standard project for presentation on your GitHub.
+
+# Data Loading
+
+First, download the data from the 10X Genomics website and load it into R.
+
+```{r load_data}
+# Data URL
+url <- "https://cf.10xgenomics.com/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz"
+
+# Directory to save the data
+data_dir <- "data/pbmc3k"
+
+# Create the directory if it doesn't exist
+if (!dir.exists(data_dir)) {
+  dir.create(data_dir, recursive = TRUE)
+}
+
+# Download the data if it doesn't exist
+data_file <- paste0(data_dir, "/pbmc3k_filtered_gene_bc_matrices.tar.gz")
+if (!file.exists(data_file)) {
+  download.file(url, destfile = data_file)
+  untar(data_file, exdir = data_dir)
+}
+
+# Load the data
+pbmc.data <- Read10X(data.dir = paste0(data_dir, "/filtered_gene_bc_matrices/hg19/"))
+
+# Create the Seurat object
+pbmc <- CreateSeuratObject(counts = pbmc.data, project = "pbmc3k", min.cells = 3, min.features = 200)
+pbmc
+```
+
+# Quality Control and Filtering
+
+Before proceeding with the analysis, it's important to perform quality control to remove low-quality cells or cells with mitochondrial contamination.
+
+```{r qc}
+# Calculate the percentage of mitochondrial genes
+pbmc[["percent.mt"]] <- PercentageFeatureSet(pbmc, pattern = "^MT-")
+
+# Visualize QC metrics
+VlnPlot(pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+# Save the QC plot
+ggsave(filename = "output/qc_violin_plot.png", dpi = 300, width = 10, height = 6)
+
+# Filter cells based on QC metrics
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+```
+
+# Data Normalization
+
+Normalize gene expression data to remove technical variations between cells.
+
+```{r normalize}
+pbmc <- NormalizeData(pbmc)
+```
+
+# Identification of Highly Variable Features
+
+Identify genes that show high variability in expression across cells.
+
+```{r hvg}
+pbmc <- FindVariableFeatures(pbmc, selection.method = "vst", nfeatures = 2000)
+
+# Visualize the top 10 highly variable genes
+top10 <- head(VariableFeatures(pbmc), 10)
+
+# Plot variable features with labels
+plot1 <- VariableFeaturePlot(pbmc)
+plot1 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot1
+
+# Save the variable features plot
+ggsave(filename = "output/variable_features.png", plot = plot1, dpi = 300, width = 10, height = 6)
+```
+
+# Scaling the Data
+
+Scale the data so that each gene has a mean of zero and a variance of one.
+
+```{r scale}
+all.genes <- rownames(pbmc)
+pbmc <- ScaleData(pbmc, features = all.genes)
+```
+
+# Principal Component Analysis (PCA)
+
+Reduce the dimensionality of the data using PCA.
+
+```{r pca}
+pbmc <- RunPCA(pbmc, features = VariableFeatures(object = pbmc))
+
+# Visualize PCA results
+print(pbmc[["pca"]], dims = 1:5, nfeatures = 5)
+VizDimLoadings(pbmc, dims = 1:2, reduction = "pca")
+DimPlot(pbmc, reduction = "pca")
+
+# Save PCA plots
+ggsave(filename = "output/pca_dim_loadings.png", plot = VizDimLoadings(pbmc, dims = 1:2, reduction = "pca"), dpi = 300, width = 8, height = 6)
+ggsave(filename = "output/pca_scatter.png", plot = DimPlot(pbmc, reduction = "pca"), dpi = 300, width = 8, height = 6)
+```
+
+# Determining the Dataset Dimensionality
+
+Use the elbow plot to determine the number of PCs to use.
+
+```{r elbow}
+ElbowPlot(pbmc)
+
+# Save the elbow plot
+ggsave(filename = "output/elbow_plot.png", dpi = 300, width = 8, height = 6)
+```
+
+For this dataset, we will use the first 10 PCs.
+
+# Clustering the Cells
+
+Use the principal components to cluster the cells.
+
+```{r clustering}
+pbmc <- FindNeighbors(pbmc, dims = 1:10)
+pbmc <- FindClusters(pbmc, resolution = 0.5)
+
+# View cluster assignments
+head(Idents(pbmc), 5)
+```
+
+# Non-linear Dimensional Reduction (UMAP)
+
+Apply UMAP to visualize the data in 2D.
+
+```{r umap}
+pbmc <- RunUMAP(pbmc, dims = 1:10)
+umap_plot <- DimPlot(pbmc, reduction = "umap")
+umap_plot
+
+# Save the UMAP plot
+ggsave(filename = "output/umap_plot.png", plot = umap_plot, dpi = 300, width = 8, height = 6)
+```
+
+# Identifying Cluster Markers
+
+Identify genes that are markers for each cluster.
+
+```{r markers}
+pbmc.markers <- FindAllMarkers(pbmc, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+# Display top markers
+top_markers <- pbmc.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_log2FC)
+top_markers
+```
+
+# Visualizing Markers
+
+Visualize the expression of markers in clusters.
+
+```{r marker_plots}
+# Violin plots for marker genes
+vln_plot <- VlnPlot(pbmc, features = c("MS4A1", "CD79A"))
+vln_plot
+
+# Save violin plot
+ggsave(filename = "output/violin_plot_markers.png", plot = vln_plot, dpi = 300, width = 10, height = 6)
+
+# Feature plots for marker genes
+feature_plot <- FeaturePlot(pbmc, features = c("MS4A1", "CD3E", "GNLY", "NKG7"))
+feature_plot
+
+# Save feature plot
+ggsave(filename = "output/feature_plot_markers.png", plot = feature_plot, dpi = 300, width = 10, height = 8)
+```
+
+# Assigning Cell Type Identity
+
+Based on the markers, assign cell types to the clusters.
+
+```{r cell_identity}
+new.cluster.ids <- c("Naive CD4+ T", "CD14+ Monocytes", "Memory CD4+ T", "B Cells", 
+                     "CD8+ T", "FCGR3A+ Monocytes", "NK Cells", "Dendritic Cells", "Platelets")
+names(new.cluster.ids) <- levels(pbmc)
+pbmc <- RenameIdents(pbmc, new.cluster.ids)
+final_umap <- DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+final_umap
+
+# Save the labeled UMAP plot
+ggsave(filename = "output/umap_labeled.png", plot = final_umap, dpi = 300, width = 8, height = 6)
+```
+
+# Saving the Seurat Object
+
+Ensure the `output` directory exists before saving the object.
+
+```{r save}
+# Create 'output' directory if it doesn't exist
+if (!dir.exists("output")) {
+  dir.create("output")
+}
+
+saveRDS(pbmc, file = "output/pbmc3k_final.rds")
+```
+
+# Session Information
+
+```{r session_info}
+sessionInfo()
+```
+
+---
