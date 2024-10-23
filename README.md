@@ -171,19 +171,19 @@ Marker genes such as *MS4A1*, *CD79A* (B cells), *CD3E* (T cells), *GNLY*, and *
 Key visualizations generated during the analysis include:
 
 - **QC Violin Plots**: Assessing cell quality metrics such as mitochondrial content and gene count.
-  ![QC Violin Plot](path/to/qc_violin_plot.png)
+  ![QC Violin Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/qc_violin_plot.png)
 - **Variable Feature Plot**: Highlighting highly variable genes in the dataset.
-  ![Variable Feature Plot](path/to/variable_features.png)
+  ![Variable Feature Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/feature_plot_markers.png)
 - **PCA and Elbow Plots**: Evaluating the dimensionality reduction process.
-  ![Elbow Plot](path/to/elbow_plot.png)
+  ![Elbow Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/elbow_plot.png)
 - **PCA Scatter Plot**: Visualizing key principal components.
-  ![PCA Scatter Plot](path/to/pca_scatter.png)
+  ![PCA Scatter Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/pca_scatter.png)
 - **UMAP Plot**: Visualizing clusters in reduced dimensions using UMAP.
-  ![UMAP Plot](path/to/umap_plot.png)
+  ![UMAP Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/umap_plot.png)
 - **Labeled UMAP Plot**: Annotating the UMAP plot with identified cell types.
-  ![Labeled UMAP Plot](path/to/umap_labeled.png)
+  ![Labeled UMAP Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/umap_labeled.png)
 - **Violin Plots of Marker Genes**: Displaying expression levels of key marker genes across different clusters.
-  ![Violin Plot](path/to/violin_plot_markers.png)
+  ![Violin Plot](https://github.com/LuisNagano/Single-Cell-Clustering-Analysis/blob/main/output/violin_plot_markers.png)
 
 All plots are saved in the `output` directory and are publication-ready.
 
